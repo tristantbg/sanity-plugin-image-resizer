@@ -265,10 +265,14 @@ export function ImageResizerView() {
         <Flex align="flex-start" justify="space-between" gap={4} wrap="wrap">
           <Stack space={2} style={{ flex: 1, minWidth: 0 }}>
             <Heading size={2}>Image Resizer</Heading>
-            <Text size={1} muted style={{ wordBreak: 'break-word' }}>
+            <Card
+              size={1}
+              tone="transparent"
+              style={{ wordBreak: 'break-word' }}
+            >
               Converts TIFF images to WebP. Resizes/compresses all images to fit
               within {IMAGE_MAX_WIDTH}px / {MAX_SIZE_MB} MB.
-            </Text>
+            </Card>
           </Stack>
           <Flex gap={2} align="center" wrap="wrap" style={{ flexShrink: 0 }}>
             <Button
