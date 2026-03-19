@@ -38,7 +38,7 @@ export const imageResizerPlugin = definePlugin<ImageResizerOptions | void>(
           ...prev,
           {
             name: 'image-resizer',
-            title: 'Image Optimiser',
+            title: 'Image Resizer',
             component: ImageResizerView,
           },
         ]

@@ -2,7 +2,7 @@
 
 > This is a **Sanity Studio v3** plugin.
 
-Batch-optimise image assets in your Sanity dataset. Scans all `sanity.imageAsset` documents for constraint violations (TIFF format, oversized width or filesize) and lets editors resize, compress and convert them in-place — re-encoding via the Sanity Image API, uploading the optimised version, re-linking all references and cleaning up the old asset.
+Batch-resize image assets in your Sanity dataset. Scans all `sanity.imageAsset` documents for constraint violations (TIFF format, oversized width or filesize) and lets editors resize, compress and convert them in-place — re-encoding via the Sanity Image API, uploading the resized version, re-linking all references and cleaning up the old asset.
 
 ## Features
 
@@ -65,9 +65,9 @@ export default defineType({
 ### Using the tool
 
 1. Open your Sanity Studio.
-2. Navigate to the **Image Optimiser** tool in the Studio sidebar.
+2. Navigate to the **Image Resizer** tool in the Studio sidebar.
 3. The tool automatically scans all image assets and shows those violating constraints.
-4. Click **Process All** to batch-optimise, or process individual assets.
+4. Click **Process All** to batch-resize, or process individual assets.
 5. Use the ⚙ Settings button to toggle PNG → WebP and TIFF → JPG conversions.
 
 ## Configuration options

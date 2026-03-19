@@ -58,7 +58,7 @@ function loadSettings(): ConversionSettings {
 
 /**
  * Studio tool that scans all image assets for constraint violations
- * (TIFF format, oversized width/filesize) and lets editors batch-optimise
+ * (TIFF format, oversized width/filesize) and lets editors batch-resize
  * them in-place — re-encoding, resizing and re-linking references.
  */
 export function ImageResizerView() {
@@ -156,7 +156,7 @@ export function ImageResizerView() {
         if (blob.size >= asset.size) {
           updateAsset(asset._id, {
             status: 'error',
-            error: `Skipped: optimised file (${(blob.size / 1024 / 1024).toFixed(1)} MB) is not smaller than original (${(asset.size / 1024 / 1024).toFixed(1)} MB)`,
+            error: `Skipped: resized file (${(blob.size / 1024 / 1024).toFixed(1)} MB) is not smaller than original (${(asset.size / 1024 / 1024).toFixed(1)} MB)`,
           })
           return
         }
@@ -264,7 +264,7 @@ export function ImageResizerView() {
         {/* ── Header ─────────────────────────────────────────────────── */}
         <Flex align="flex-start" justify="space-between" gap={4} wrap="wrap">
           <Stack space={2} style={{ flex: 1, minWidth: 0 }}>
-            <Heading size={2}>Image Optimiser</Heading>
+            <Heading size={2}>Image Resizer</Heading>
             <Text size={1} muted style={{ wordBreak: 'break-word' }}>
               Converts TIFF images to WebP. Resizes/compresses all images to fit
               within {IMAGE_MAX_WIDTH}px / {MAX_SIZE_MB} MB.
@@ -344,7 +344,7 @@ export function ImageResizerView() {
       {/* ── Settings dialog ────────────────────────────────────────── */}
       {showSettings && (
         <Dialog
-          id="image-optimiser-settings"
+          id="image-resizer-settings"
           header="Conversion Settings"
           onClose={() => setShowSettings(false)}
           width={1}

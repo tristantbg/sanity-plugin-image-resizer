@@ -85,7 +85,7 @@ export const CONCURRENCY = 3
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
-/** Checks which optimisation constraints the asset violates. */
+/** Checks which resize constraints the asset violates. */
 export function getViolations(
     asset: Pick<ImageAsset, 'mimeType' | 'size' | 'width'>,
     settings: ConversionSettings
