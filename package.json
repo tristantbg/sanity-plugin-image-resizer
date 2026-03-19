@@ -1,6 +1,6 @@
 {
     "name": "sanity-plugin-image-resizer",
-    "version": "1.0.3",
+    "version": "1.0.4",
     "description": "Sanity Studio tool to batch-optimise image assets — resize, compress and convert formats",
     "keywords": [
         "sanity",
