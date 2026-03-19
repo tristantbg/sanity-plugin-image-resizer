@@ -1,0 +1,6 @@
+{
+    "extends": "@sanity/semantic-release-preset",
+    "branches": [
+        "main"
+    ]
+}
