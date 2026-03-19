@@ -100,7 +100,7 @@ export function ImageResizerView() {
             mimeType == "image/tiff" ||
             metadata.dimensions.width > ${IMAGE_MAX_WIDTH} ||
             size > ${IMAGE_MAX_SIZE}
-          )][] {
+          )] | order(size desc) [0...500] {
             _id, url, originalFilename, mimeType, size,
             "width": metadata.dimensions.width
           }`
