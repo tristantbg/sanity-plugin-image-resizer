@@ -1,4 +1,4 @@
-import { type CustomValidator } from 'sanity'
+import { type CustomValidator, type SanityClient } from 'sanity'
 
 // ─── types ──────────────────────────────────────────────────────────────────
 
@@ -150,8 +150,9 @@ export async function processImage(
 
 /**
  * Recursively traverses a document tree and collects all paths where
- * `asset._ref === oldId`. Returns a flat `{ path: newRef }` object
- * compatible with `client.patch().set()`.
+ * a reference points to `oldId` (either via `asset._ref` or a direct
+ * `_ref`). Returns a flat `{ path: newRef }` object compatible with
+ * `client.patch().set()`.
  */
 export function buildReplacementPatch(
     obj: unknown,
@@ -180,9 +181,19 @@ export function buildReplacementPatch(
 
     const record = obj as Record<string, unknown>
 
+    // Match image fields with asset._ref
     if ((record.asset as any)?._ref === oldId) {
         const assetPath = path ? `${path}.asset` : 'asset'
         return { [assetPath]: { _type: 'reference', _ref: newId } }
+    }
+
+    // Match direct references (e.g. inside media.tag arrays)
+    if (
+        record._type === 'reference' &&
+        record._ref === oldId
+    ) {
+        const refPath = path || '_ref'
+        return { [refPath]: { _type: 'reference', _ref: newId } }
     }
 
     return Object.keys(record)
@@ -197,6 +208,48 @@ export function buildReplacementPatch(
             },
             {}
         )
+}
+
+/**
+ * Metadata fields to preserve when replacing an image asset.
+ * Covers built-in Sanity asset fields and sanity-plugin-media tags.
+ */
+const ASSET_METADATA_FIELDS = [
+    'title',
+    'description',
+    'altText',
+    'creditLine',
+    'source',
+    'opt',
+] as const
+
+/**
+ * Copies user-editable metadata (title, description, alt text, credit,
+ * source, and opt.media.tags) from the old asset to the new one.
+ */
+export async function copyAssetMetadata(
+    client: SanityClient,
+    oldAssetId: string,
+    newAssetId: string,
+): Promise<void> {
+    const projection = ASSET_METADATA_FIELDS.join(', ')
+    const oldMeta = await client.fetch(
+        `*[_id == $id][0]{ ${projection} }`,
+        { id: oldAssetId },
+    )
+    if (!oldMeta) return
+
+    // Build a flat patch with only the fields that actually exist
+    const patch: Record<string, unknown> = {}
+    for (const field of ASSET_METADATA_FIELDS) {
+        if (oldMeta[field] !== undefined && oldMeta[field] !== null) {
+            patch[field] = oldMeta[field]
+        }
+    }
+
+    if (Object.keys(patch).length > 0) {
+        await client.patch(newAssetId).set(patch).commit()
+    }
 }
 
 // ─── validation ─────────────────────────────────────────────────────────────

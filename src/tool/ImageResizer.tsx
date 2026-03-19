@@ -24,6 +24,7 @@ import {
   IMAGE_MAX_SIZE,
   IMAGE_MAX_WIDTH,
   buildReplacementPatch,
+  copyAssetMetadata,
   getViolations,
   processImage,
 } from '../helpers'
@@ -168,6 +169,9 @@ export function ImageResizerView() {
           filename: `${baseName}.${outFormat}`,
           contentType: `image/${outFormat}`,
         })
+
+        // 2b — Copy metadata (tags, alt text, credits, etc.) to the new asset
+        await copyAssetMetadata(client, asset._id, newAsset._id)
 
         // 3 — Re-link all referencing documents
         const refs = await client.fetch<{ _id: string }[]>(
