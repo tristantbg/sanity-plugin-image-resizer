@@ -93,6 +93,11 @@ export function ImageResizerView() {
   // Cancellation flag — checked between items in the batch loop
   const cancelRef = useRef(false)
 
+  // Ref mirrors counts.processing for use inside non-React callbacks
+  const processingCountRef = useRef(0)
+  // Ref for the i18n confirm message, updated reactively
+  const confirmMsgRef = useRef('')
+
   // ── data fetching ───────────────────────────────────────────────────────
 
   /** Fetches all image assets that violate at least one constraint. */
@@ -255,25 +260,6 @@ export function ImageResizerView() {
     cancelRef.current = true
   }, [])
 
-  // ── navigation guards ───────────────────────────────────────────────────
-
-  // Warn before browser close / refresh while processing
-  useEffect(() => {
-    if (!processingAll) return
-    const handler = (e: BeforeUnloadEvent) => {
-      e.preventDefault()
-    }
-    window.addEventListener('beforeunload', handler)
-    return () => window.removeEventListener('beforeunload', handler)
-  }, [processingAll])
-
-  // Cancel queue when the component unmounts (in-app navigation)
-  useEffect(() => {
-    return () => {
-      cancelRef.current = true
-    }
-  }, [])
-
   // ── derived state (memoised) ────────────────────────────────────────────
 
   /** Aggregated status counts used for badges and conditional rendering. */
@@ -286,6 +272,50 @@ export function ImageResizerView() {
     }),
     [assets]
   )
+
+  // ── navigation guards ───────────────────────────────────────────────────
+
+  // Keep refs in sync for use inside non-React callbacks
+  useEffect(() => {
+    processingCountRef.current = counts.processing
+    confirmMsgRef.current = t('nav.confirm-leave', { count: counts.processing })
+  }, [counts.processing, t])
+
+  // Warn before browser close / refresh while processing
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      if (processingCountRef.current === 0) return
+      e.preventDefault()
+      e.returnValue = ''
+    }
+    window.addEventListener('beforeunload', handler)
+    return () => window.removeEventListener('beforeunload', handler)
+  }, [])
+
+  // Intercept in-app navigation (Sanity router uses history.pushState)
+  useEffect(() => {
+    const original = history.pushState.bind(history)
+    history.pushState = function (
+      ...args: Parameters<typeof history.pushState>
+    ) {
+      if (processingCountRef.current > 0) {
+        // eslint-disable-next-line no-alert
+        if (!window.confirm(confirmMsgRef.current)) return
+        cancelRef.current = true
+      }
+      original(...args)
+    }
+    return () => {
+      history.pushState = original
+    }
+  }, [])
+
+  // Cancel queue when the component unmounts (e.g. forced navigation)
+  useEffect(() => {
+    return () => {
+      cancelRef.current = true
+    }
+  }, [])
 
   // ── render ──────────────────────────────────────────────────────────────
 
@@ -324,7 +354,7 @@ export function ImageResizerView() {
               onClick={fetchAssets}
               disabled={loading || processingAll}
             />
-            {counts.pending > 0 && !processingAll && (
+            {counts.pending > 0 && counts.processing === 0 && (
               <Button
                 text={t('action.process-all', { count: counts.pending })}
                 tone="primary"
@@ -332,22 +362,14 @@ export function ImageResizerView() {
                 disabled={loading}
               />
             )}
-            {processingAll && (
-              <Flex gap={2}>
-                <Button
-                  text={t('action.finish-ongoing', {
-                    count: counts.processing,
-                  })}
-                  tone="caution"
-                  mode="ghost"
-                  disabled
-                />
-                {/* <Button
-                  text={t('action.stop-all')}
-                  tone="critical"
-                  onClick={stopProcessing}
-                /> */}
-              </Flex>
+            {counts.processing > 0 && (
+              <Button
+                text={t('action.finish-ongoing', {
+                  count: counts.processing,
+                })}
+                tone="caution"
+                onClick={stopProcessing}
+              />
             )}
           </Flex>
         </Flex>

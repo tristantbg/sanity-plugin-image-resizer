@@ -15,10 +15,8 @@ export default {
     'action.refresh': 'Refresh',
     /** Process-all button label ({{count}} = number of pending assets) */
     'action.process-all': 'Process All ({{count}})',
-    /** Label for the button that lets the current in-flight tasks finish */
+    /** Label for the button that stops processing (with live count) */
     'action.finish-ongoing': 'Finish ongoing tasks ({{count}})',
-    /** Label for the stop button that cancels the queue immediately */
-    'action.stop-all': 'Stop All (possible data loss)',
 
     // ── Status badges ───────────────────────────────────────────────────────
     /** Pending badge ({{count}} = number) */
@@ -45,6 +43,11 @@ export default {
     'settings.tiff-to-jpg': 'Convert TIFF → JPG (instead of WebP)',
     /** Hint below toggles */
     'settings.apply-hint': 'Changes apply on next Refresh.',
+
+    // ── Navigation guard ────────────────────────────────────────────────────
+    /** Confirm dialog shown when navigating away during processing */
+    'nav.confirm-leave':
+        'Image processing is in progress ({{count}}). Leaving now may cause data loss. Are you sure?',
 
     // ── Asset card ──────────────────────────────────────────────────────────
     /** Violation badge: TIFF → WebP */
