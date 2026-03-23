@@ -1,5 +1,8 @@
 import { definePlugin } from 'sanity'
-import { imageResizerUsEnglishLocaleBundle } from './i18n'
+import {
+  imageResizerUsEnglishLocaleBundle,
+  imageResizerLocaleNamespace,
+} from './i18n'
 import { applyConfig, type ImageResizerOptions } from './helpers'
 import { ImageResizerView } from './tool/ImageResizer'
 
@@ -40,6 +43,12 @@ export const imageResizerPlugin = definePlugin<ImageResizerOptions | void>(
             name: 'image-resizer',
             title: 'Image Resizer',
             component: ImageResizerView,
+            i18n: {
+              title: {
+                key: 'tool.title',
+                ns: imageResizerLocaleNamespace,
+              },
+            },
           },
         ]
       },

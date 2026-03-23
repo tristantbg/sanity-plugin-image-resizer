@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useClient } from 'sanity'
+import { useClient, useTranslation } from 'sanity'
 import {
   Badge,
   Box,
@@ -29,6 +29,7 @@ import {
   processImage,
 } from '../helpers'
 import { AssetCard } from './components/AssetCard'
+import { imageResizerLocaleNamespace } from '../i18n'
 
 /** Human-readable size limit for display purposes */
 const MAX_SIZE_MB = IMAGE_MAX_SIZE / 1024 / 1024
@@ -64,6 +65,7 @@ function loadSettings(): ConversionSettings {
  */
 export function ImageResizerView() {
   const client = useClient({ apiVersion: '2025-02-19' })
+  const { t } = useTranslation(imageResizerLocaleNamespace)
   const [assets, setAssets] = useState<ImageAsset[]>([])
   const [loading, setLoading] = useState(true)
   const [processingAll, setProcessingAll] = useState(false)
@@ -87,6 +89,9 @@ export function ImageResizerView() {
   useEffect(() => {
     assetsRef.current = assets
   }, [assets])
+
+  // Cancellation flag — checked between items in the batch loop
+  const cancelRef = useRef(false)
 
   // ── data fetching ───────────────────────────────────────────────────────
 
@@ -224,6 +229,7 @@ export function ImageResizerView() {
    * tasks running in parallel using a simple worker-pool pattern.
    */
   const processAll = useCallback(async () => {
+    cancelRef.current = false
     setProcessingAll(true)
     const pending = assetsRef.current.filter(
       (a) => a.status === 'idle' || a.status === 'error'
@@ -232,6 +238,7 @@ export function ImageResizerView() {
     let idx = 0
     const next = async (): Promise<void> => {
       while (idx < pending.length) {
+        if (cancelRef.current) break
         const asset = pending[idx++]
         await processAsset(asset)
       }
@@ -242,6 +249,30 @@ export function ImageResizerView() {
 
     setProcessingAll(false)
   }, [processAsset])
+
+  /** Cancels the batch queue (in-flight items finish, no new ones start). */
+  const stopProcessing = useCallback(() => {
+    cancelRef.current = true
+  }, [])
+
+  // ── navigation guards ───────────────────────────────────────────────────
+
+  // Warn before browser close / refresh while processing
+  useEffect(() => {
+    if (!processingAll) return
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault()
+    }
+    window.addEventListener('beforeunload', handler)
+    return () => window.removeEventListener('beforeunload', handler)
+  }, [processingAll])
+
+  // Cancel queue when the component unmounts (in-app navigation)
+  useEffect(() => {
+    return () => {
+      cancelRef.current = true
+    }
+  }, [])
 
   // ── derived state (memoised) ────────────────────────────────────────────
 
@@ -268,14 +299,16 @@ export function ImageResizerView() {
         {/* ── Header ─────────────────────────────────────────────────── */}
         <Flex align="flex-start" justify="space-between" gap={4} wrap="wrap">
           <Stack space={2} style={{ flex: 1, minWidth: 0 }}>
-            <Heading size={2}>Image Resizer</Heading>
+            <Heading size={2}>{t('header.title')}</Heading>
             <Card
               size={1}
               tone="transparent"
               style={{ wordBreak: 'break-word' }}
             >
-              Converts TIFF images to WebP. Resizes/compresses all images to fit
-              within {IMAGE_MAX_WIDTH}px / {MAX_SIZE_MB} MB.
+              {t('header.description', {
+                maxWidth: IMAGE_MAX_WIDTH,
+                maxSize: MAX_SIZE_MB,
+              })}
             </Card>
           </Stack>
           <Flex gap={2} align="center" wrap="wrap" style={{ flexShrink: 0 }}>
@@ -286,23 +319,35 @@ export function ImageResizerView() {
               disabled={processingAll}
             />
             <Button
-              text="Refresh"
+              text={t('action.refresh')}
               mode="ghost"
               onClick={fetchAssets}
               disabled={loading || processingAll}
             />
-            {counts.pending > 0 && (
+            {counts.pending > 0 && !processingAll && (
               <Button
-                text={
-                  processingAll
-                    ? 'Processing…'
-                    : `Process All (${counts.pending})`
-                }
+                text={t('action.process-all', { count: counts.pending })}
                 tone="primary"
                 onClick={processAll}
-                disabled={processingAll || loading}
-                icon={processingAll ? Spinner : undefined}
+                disabled={loading}
               />
+            )}
+            {processingAll && (
+              <Flex gap={2}>
+                <Button
+                  text={t('action.finish-ongoing', {
+                    count: counts.processing,
+                  })}
+                  tone="caution"
+                  mode="ghost"
+                  disabled
+                />
+                {/* <Button
+                  text={t('action.stop-all')}
+                  tone="critical"
+                  onClick={stopProcessing}
+                /> */}
+              </Flex>
             )}
           </Flex>
         </Flex>
@@ -311,16 +356,24 @@ export function ImageResizerView() {
         {!loading && assets.length > 0 && (
           <Flex gap={3} wrap="wrap">
             {counts.pending > 0 && (
-              <Badge tone="caution">{counts.pending} pending</Badge>
+              <Badge tone="caution">
+                {t('status.pending', { count: counts.pending })}
+              </Badge>
             )}
             {counts.processing > 0 && (
-              <Badge tone="primary">{counts.processing} processing</Badge>
+              <Badge tone="primary">
+                {t('status.processing', { count: counts.processing })}
+              </Badge>
             )}
             {counts.done > 0 && (
-              <Badge tone="positive">{counts.done} done</Badge>
+              <Badge tone="positive">
+                {t('status.done', { count: counts.done })}
+              </Badge>
             )}
             {counts.error > 0 && (
-              <Badge tone="critical">{counts.error} failed</Badge>
+              <Badge tone="critical">
+                {t('status.failed', { count: counts.error })}
+              </Badge>
             )}
           </Flex>
         )}
@@ -329,11 +382,11 @@ export function ImageResizerView() {
         {loading ? (
           <Flex padding={6} justify="center" align="center" gap={3}>
             <Spinner />
-            <Text muted>Scanning assets…</Text>
+            <Text muted>{t('state.scanning')}</Text>
           </Flex>
         ) : assets.length === 0 ? (
           <Card padding={5} radius={2} tone="positive" border>
-            <Text align="center">All images meet the requirements.</Text>
+            <Text align="center">{t('state.all-good')}</Text>
           </Card>
         ) : (
           <Stack space={2}>
@@ -353,7 +406,7 @@ export function ImageResizerView() {
       {showSettings && (
         <Dialog
           id="image-resizer-settings"
-          header="Conversion Settings"
+          header={t('settings.title')}
           onClose={() => setShowSettings(false)}
           width={1}
         >
@@ -369,7 +422,7 @@ export function ImageResizerView() {
                   }}
                 />
                 <Label htmlFor="png-to-webp" style={{ cursor: 'pointer' }}>
-                  Convert PNG → WebP
+                  {t('settings.png-to-webp')}
                 </Label>
               </Flex>
               <Flex align="center" gap={3}>
@@ -382,11 +435,11 @@ export function ImageResizerView() {
                   }}
                 />
                 <Label htmlFor="tiff-to-jpg" style={{ cursor: 'pointer' }}>
-                  Convert TIFF → JPG (instead of WebP)
+                  {t('settings.tiff-to-jpg')}
                 </Label>
               </Flex>
               <Text size={1} muted>
-                Changes apply on next Refresh.
+                {t('settings.apply-hint')}
               </Text>
             </Stack>
           </Box>

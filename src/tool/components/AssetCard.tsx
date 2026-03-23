@@ -8,6 +8,7 @@ import {
   Stack,
   Text,
 } from '@sanity/ui'
+import { useTranslation } from 'sanity'
 import {
   type ConversionSettings,
   type ImageAsset,
@@ -16,22 +17,23 @@ import {
   IMAGE_MAX_WIDTH,
   IMAGE_MAX_SIZE,
 } from '../../helpers'
+import { imageResizerLocaleNamespace } from '../../i18n'
 
 /** Human-readable size limit for display purposes */
 const MAX_SIZE_MB = IMAGE_MAX_SIZE / 1024 / 1024
 
-/** Labels shown on violation badges */
-const VIOLATION_LABELS: Record<Violation, string> = {
-  format: 'TIFF → WebP',
-  width: `> ${IMAGE_MAX_WIDTH}px`,
-  size: `> ${MAX_SIZE_MB} MB`,
-}
-
 /** Builds a human-readable label for the format violation badge. */
-function formatViolationLabel(settings: ConversionSettings): string {
+function formatViolationLabel(
+  settings: ConversionSettings,
+  t: (key: string) => string
+): string {
   const parts: string[] = []
-  parts.push(settings.tiffToJpg ? 'TIFF → JPG' : 'TIFF → WebP')
-  if (settings.pngToWebp) parts.push('PNG → WebP')
+  parts.push(
+    settings.tiffToJpg
+      ? t('violation.tiff-to-jpg')
+      : t('violation.tiff-to-webp')
+  )
+  if (settings.pngToWebp) parts.push(t('violation.png-to-webp'))
   return parts.join(', ')
 }
 
@@ -39,12 +41,20 @@ function formatViolationLabel(settings: ConversionSettings): string {
 function ViolationBadge({
   type,
   settings,
+  t,
 }: {
   type: Violation
   settings: ConversionSettings
+  t: (key: string, params?: Record<string, unknown>) => string
 }) {
-  const label =
-    type === 'format' ? formatViolationLabel(settings) : VIOLATION_LABELS[type]
+  let label: string
+  if (type === 'format') {
+    label = formatViolationLabel(settings, t)
+  } else if (type === 'width') {
+    label = t('violation.width', { maxWidth: IMAGE_MAX_WIDTH })
+  } else {
+    label = t('violation.size', { maxSize: MAX_SIZE_MB })
+  }
   return (
     <Badge tone="caution" size={1}>
       {label}
@@ -76,6 +86,7 @@ export function AssetCard({
   onProcess: (asset: ImageAsset) => void
   settings: ConversionSettings
 }) {
+  const { t } = useTranslation(imageResizerLocaleNamespace)
   const isDone = asset.status === 'done' && asset.newUrl
   const thumbUrl = isDone ? asset.newUrl! : asset.url
   const sizeReduction =
@@ -117,17 +128,23 @@ export function AssetCard({
           {isDone ? (
             <>
               <Text size={1} muted style={{ wordBreak: 'break-word' }}>
-                {(asset.size / 1024 / 1024).toFixed(1)} MB →{' '}
-                {(asset.newSize! / 1024 / 1024).toFixed(1)} MB
-                {sizeReduction !== null && sizeReduction > 0
-                  ? ` (−${sizeReduction}%)`
-                  : ''}{' '}
-                — {asset.newWidth}px wide
+                {t('asset.summary-done', {
+                  oldSize: (asset.size / 1024 / 1024).toFixed(1),
+                  newSize: (asset.newSize! / 1024 / 1024).toFixed(1),
+                  reduction:
+                    sizeReduction !== null && sizeReduction > 0
+                      ? t('asset.reduction', { percent: sizeReduction })
+                      : '',
+                  width: asset.newWidth,
+                })}
               </Text>
               <Flex gap={2} wrap="wrap">
                 {asset.newWidth != null && asset.newWidth < asset.width && (
                   <Badge tone="positive" size={1}>
-                    {asset.width}px → {asset.newWidth}px
+                    {t('asset.width-reduced', {
+                      oldWidth: asset.width,
+                      newWidth: asset.newWidth,
+                    })}
                   </Badge>
                 )}
               </Flex>
@@ -136,12 +153,14 @@ export function AssetCard({
             <>
               <Flex gap={2} wrap="wrap">
                 {asset.violations.map((v) => (
-                  <ViolationBadge key={v} type={v} settings={settings} />
+                  <ViolationBadge key={v} type={v} settings={settings} t={t} />
                 ))}
               </Flex>
               <Text size={1} muted style={{ wordBreak: 'break-word' }}>
-                {(asset.size / 1024 / 1024).toFixed(1)} MB — {asset.width}px
-                wide
+                {t('asset.summary', {
+                  size: (asset.size / 1024 / 1024).toFixed(1),
+                  width: asset.width,
+                })}
               </Text>
             </>
           )}
@@ -162,17 +181,19 @@ export function AssetCard({
         <Box style={{ flexShrink: 0 }}>
           {asset.status === 'idle' && (
             <Button
-              text="Process"
+              text={t('asset.process')}
               mode="ghost"
               tone="primary"
               onClick={() => onProcess(asset)}
             />
           )}
           {asset.status === 'processing' && <Spinner />}
-          {asset.status === 'done' && <Badge tone="positive">Done</Badge>}
+          {asset.status === 'done' && (
+            <Badge tone="positive">{t('asset.done')}</Badge>
+          )}
           {asset.status === 'error' && (
             <Button
-              text="Retry"
+              text={t('asset.retry')}
               mode="ghost"
               tone="critical"
               onClick={() => onProcess(asset)}
